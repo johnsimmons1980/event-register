@@ -10,6 +10,8 @@
       --primary-dark: #0056b3;
       --danger: #dc3545;
       --danger-dark: #b52a37;
+      --warning: #ffc107;
+      --warning-dark: #d39e00;
       --bg: #f0f2f5;
       --text: #222;
       --card-bg: #ffffff;
@@ -44,7 +46,6 @@
     #counter {
       font-size: 1rem;
       margin-bottom: 1rem;
-      color: var(--text);
     }
 
     #saving {
@@ -60,7 +61,7 @@
       flex-direction: column;
       gap: 0.5rem;
       width: 100%;
-      max-width: 400px;
+      max-width: 420px;
     }
 
     .person {
@@ -70,6 +71,7 @@
       background-color: var(--card-bg);
       padding: 0.75rem 1rem;
       border-radius: 10px;
+      border: 2px solid transparent;
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
       transition: all 0.3s ease;
     }
@@ -78,7 +80,12 @@
       background-color: var(--checked-bg);
     }
 
-    .person.checked span {
+    .person.absent {
+      border: 2px solid var(--danger);
+    }
+
+    .person.checked span,
+    .person.absent span {
       opacity: 0.6;
       text-decoration: line-through;
     }
@@ -90,12 +97,13 @@
     }
 
     .person button {
-      padding: 0.4rem 0.8rem;
+      padding: 0.4rem 0.6rem;
       border: none;
       border-radius: 6px;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       cursor: pointer;
       transition: background-color 0.2s ease;
+      margin-left: 0.4rem;
     }
 
     .btn-arrive {
@@ -108,11 +116,18 @@
     }
 
     .btn-undo {
+      background-color: var(--warning);
+      color: black;
+    }
+    .btn-undo:hover {
+      background-color: var(--warning-dark);
+    }
+
+    .btn-absent {
       background-color: var(--danger);
       color: white;
     }
-
-    .btn-undo:hover {
+    .btn-absent:hover {
       background-color: var(--danger-dark);
     }
 
@@ -141,7 +156,7 @@
   <button id="toggle-theme" onclick="toggleTheme()">🌓 Toggle Dark Mode</button>
 
   <script>
-    const scriptUrl = "https://script.google.com/macros/s/AKfycbzumDNWpwd3KuplQ7nlrpS3r1swAcFUMoqZjoidNsJvaFlngUxFqzvtCfRiBzEvlcsdng/exec";
+    const scriptUrl = "https://script.google.com/macros/s/AKfycbzjaPg_XRzTtcl0QOV7Xw98CtZfMYgGslA5NIWETGvBjHYm3wYi3A7rkTrsz2dog5nj9Q/exec";  // replace with your actual URL
     const sheetName = "Sheet1";
 
     let people = [];
@@ -149,7 +164,9 @@
     function updateCounter() {
       const total = people.length;
       const checkedIn = people.filter(p => p.registered).length;
-      document.getElementById("counter").textContent = `✔️ ${checkedIn} of ${total} arrived`;
+      const absentCount = people.filter(p => p.absent).length;
+      const remaining = total - checkedIn - absentCount;
+      document.getElementById("counter").textContent = `✔️ ${checkedIn} arrived • ⛔ ${absentCount} absent • 🔄 ${remaining} remaining`;
     }
 
     async function loadData() {
@@ -165,13 +182,7 @@
           return;
         }
 
-        // Ensure types are consistent
-        people = data.map(p => ({
-          ...p,
-          rowNumber: Number(p.rowNumber),
-          registered: p.registered === true || p.registered === "true"
-        }));
-
+        people = data;
         displayData();
       } catch (err) {
         list.innerHTML = `<p style="color:red;">Failed to load data</p>`;
@@ -183,45 +194,67 @@
       const list = document.getElementById('list');
       list.innerHTML = '';
 
-      // Sort by: not registered (false) first, then by rowNumber ascending
-      people.sort((a, b) => {
-        if (a.registered === b.registered) {
-          return a.rowNumber - b.rowNumber;
-        }
-        return a.registered - b.registered; // false (0) before true (1)
+      const sorted = [...people].sort((a, b) => {
+        if (a.absent !== b.absent) return a.absent - b.absent;
+        if (a.registered !== b.registered) return a.registered - b.registered;
+        return a.rowNumber - b.rowNumber;
       });
 
       updateCounter();
 
-      people.forEach(person => {
+      sorted.forEach(person => {
         const div = document.createElement('div');
-        div.className = 'person' + (person.registered ? ' checked' : '');
+        div.className = 'person' +
+          (person.registered ? ' checked' : '') +
+          (person.absent ? ' absent' : '');
+
+        let buttonHTML = '';
+
+        if (person.absent) {
+          buttonHTML = `<button class="btn-undo" onclick="setAbsent(${person.rowNumber}, false)">Undo</button>`;
+        } else if (person.registered) {
+          buttonHTML = `<button class="btn-undo" onclick="setRegistered(${person.rowNumber}, false)">Undo</button>`;
+        } else {
+          buttonHTML = `
+            <button class="btn-arrive" onclick="setRegistered(${person.rowNumber}, true)">Arrived</button>
+            <button class="btn-absent" onclick="setAbsent(${person.rowNumber}, true)">Absent</button>
+          `;
+        }
+
         div.innerHTML = `
           <span>${person.firstName} ${person.surname}</span>
-          <button class="${person.registered ? 'btn-undo' : 'btn-arrive'}"
-                  onclick="toggleRegister(${person.rowNumber}, ${!person.registered})">
-            ${person.registered ? 'Undo' : 'Arrived'}
-          </button>
+          ${buttonHTML}
         `;
         list.appendChild(div);
       });
     }
 
-    async function toggleRegister(row, status) {
+    async function setRegistered(row, status) {
+      await updateStatus(row, { registered: status, absent: false });
+    }
+
+    async function setAbsent(row, status) {
+      await updateStatus(row, { absent: status, registered: false });
+    }
+
+    async function updateStatus(row, statusObj) {
       const savingEl = document.getElementById('saving');
       savingEl.style.display = 'block';
 
+      const params = new URLSearchParams({ sheet: sheetName, row });
+      for (const key in statusObj) {
+        params.append(key, statusObj[key]);
+      }
+
       try {
-        await fetch(`${scriptUrl}?sheet=${encodeURIComponent(sheetName)}&row=${row}&status=${status}`, {
-          method: 'POST',
-        });
+        await fetch(`${scriptUrl}?${params.toString()}`, { method: 'POST' });
 
         const person = people.find(p => p.rowNumber === row);
         if (person) {
-          person.registered = status === true || status === "true";
-          displayData(); // call this after update to re-sort
+          Object.assign(person, statusObj);
         }
 
+        displayData();
       } catch (err) {
         alert("Failed to update.");
         console.error(err);
