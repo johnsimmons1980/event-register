@@ -77,6 +77,7 @@
     .person.checked {
       background-color: var(--checked-bg);
     }
+
     .person.checked span {
       opacity: 0.6;
       text-decoration: line-through;
@@ -164,7 +165,13 @@
           return;
         }
 
-        people = data;
+        // Ensure types are consistent
+        people = data.map(p => ({
+          ...p,
+          rowNumber: Number(p.rowNumber),
+          registered: p.registered === true || p.registered === "true"
+        }));
+
         displayData();
       } catch (err) {
         list.innerHTML = `<p style="color:red;">Failed to load data</p>`;
@@ -176,7 +183,14 @@
       const list = document.getElementById('list');
       list.innerHTML = '';
 
-      people.sort((a, b) => a.registered - b.registered);
+      // Sort by: not registered (false) first, then by rowNumber ascending
+      people.sort((a, b) => {
+        if (a.registered === b.registered) {
+          return a.rowNumber - b.rowNumber;
+        }
+        return a.registered - b.registered; // false (0) before true (1)
+      });
+
       updateCounter();
 
       people.forEach(person => {
@@ -185,7 +199,7 @@
         div.innerHTML = `
           <span>${person.firstName} ${person.surname}</span>
           <button class="${person.registered ? 'btn-undo' : 'btn-arrive'}"
-                  onclick="toggleRegister(${person.rowNumber}, ${!person.registered}, this)">
+                  onclick="toggleRegister(${person.rowNumber}, ${!person.registered})">
             ${person.registered ? 'Undo' : 'Arrived'}
           </button>
         `;
@@ -193,29 +207,28 @@
       });
     }
 
-async function toggleRegister(row, status, buttonEl) {
-  const savingEl = document.getElementById('saving');
-  savingEl.style.display = 'block';
+    async function toggleRegister(row, status) {
+      const savingEl = document.getElementById('saving');
+      savingEl.style.display = 'block';
 
-  try {
-    await fetch(`${scriptUrl}?sheet=${encodeURIComponent(sheetName)}&row=${row}&status=${status}`, {
-      method: 'POST',
-    });
+      try {
+        await fetch(`${scriptUrl}?sheet=${encodeURIComponent(sheetName)}&row=${row}&status=${status}`, {
+          method: 'POST',
+        });
 
-    // Update internal state
-    const person = people.find(p => p.rowNumber === row);
-    if (person) person.registered = status;
+        const person = people.find(p => p.rowNumber === row);
+        if (person) {
+          person.registered = status === true || status === "true";
+          displayData(); // call this after update to re-sort
+        }
 
-    // ✅ Re-render the list
-    displayData();
-
-  } catch (err) {
-    alert("Failed to update.");
-    console.error(err);
-  } finally {
-    savingEl.style.display = 'none';
-  }
-}
+      } catch (err) {
+        alert("Failed to update.");
+        console.error(err);
+      } finally {
+        savingEl.style.display = 'none';
+      }
+    }
 
     function toggleTheme() {
       document.body.classList.toggle('dark');
@@ -225,4 +238,3 @@ async function toggleRegister(row, status, buttonEl) {
   </script>
 </body>
 </html>
-
