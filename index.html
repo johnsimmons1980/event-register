@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Event Register</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --primary: #007bff;
+      --primary-dark: #0056b3;
+      --danger: #dc3545;
+      --danger-dark: #b52a37;
+      --bg: #f0f2f5;
+      --text: #222;
+      --card-bg: #ffffff;
+      --checked-bg: #e0e0e0;
+    }
+
+    body.dark {
+      --bg: #181a1b;
+      --text: #eee;
+      --card-bg: #252728;
+      --checked-bg: #444;
+    }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 1rem;
+      background-color: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    h2 {
+      margin: 0.5rem 0;
+      text-align: center;
+      font-size: 1.8rem;
+    }
+
+    #counter {
+      font-size: 1rem;
+      margin-bottom: 1rem;
+      color: var(--text);
+    }
+
+    #saving {
+      text-align: center;
+      margin-bottom: 1rem;
+      font-style: italic;
+      color: #666;
+      display: none;
+    }
+
+    #list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      width: 100%;
+      max-width: 400px;
+    }
+
+    .person {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background-color: var(--card-bg);
+      padding: 0.75rem 1rem;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+      transition: all 0.3s ease;
+    }
+
+    .person.checked {
+      background-color: var(--checked-bg);
+    }
+    .person.checked span {
+      opacity: 0.6;
+      text-decoration: line-through;
+    }
+
+    .person span {
+      font-size: 1rem;
+      flex: 1;
+      padding-right: 1rem;
+    }
+
+    .person button {
+      padding: 0.4rem 0.8rem;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+
+    .btn-arrive {
+      background-color: var(--primary);
+      color: white;
+    }
+
+    .btn-arrive:hover {
+      background-color: var(--primary-dark);
+    }
+
+    .btn-undo {
+      background-color: var(--danger);
+      color: white;
+    }
+
+    .btn-undo:hover {
+      background-color: var(--danger-dark);
+    }
+
+    #toggle-theme {
+      margin-top: 2rem;
+      font-size: 0.9rem;
+      background: none;
+      border: 1px solid var(--text);
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    #toggle-theme:hover {
+      background-color: var(--card-bg);
+    }
+  </style>
+</head>
+<body>
+
+  <h2>📋 Event Register</h2>
+  <div id="counter">Loading...</div>
+  <div id="saving">💾 Saving...</div>
+  <div id="list"></div>
+  <button id="toggle-theme" onclick="toggleTheme()">🌓 Toggle Dark Mode</button>
+
+  <script>
+    const scriptUrl = "https://script.google.com/macros/s/AKfycbzumDNWpwd3KuplQ7nlrpS3r1swAcFUMoqZjoidNsJvaFlngUxFqzvtCfRiBzEvlcsdng/exec";
+    const sheetName = "Sheet1";
+
+    let people = [];
+
+    function updateCounter() {
+      const total = people.length;
+      const checkedIn = people.filter(p => p.registered).length;
+      document.getElementById("counter").textContent = `✔️ ${checkedIn} of ${total} arrived`;
+    }
+
+    async function loadData() {
+      const list = document.getElementById('list');
+      list.innerHTML = 'Loading...';
+
+      try {
+        const res = await fetch(`${scriptUrl}?sheet=${encodeURIComponent(sheetName)}`);
+        const data = await res.json();
+
+        if (data.error) {
+          list.innerHTML = `<p style="color:red;">Error: ${data.error}</p>`;
+          return;
+        }
+
+        people = data;
+        displayData();
+      } catch (err) {
+        list.innerHTML = `<p style="color:red;">Failed to load data</p>`;
+        console.error(err);
+      }
+    }
+
+    function displayData() {
+      const list = document.getElementById('list');
+      list.innerHTML = '';
+
+      people.sort((a, b) => a.registered - b.registered);
+      updateCounter();
+
+      people.forEach(person => {
+        const div = document.createElement('div');
+        div.className = 'person' + (person.registered ? ' checked' : '');
+        div.innerHTML = `
+          <span>${person.firstName} ${person.surname}</span>
+          <button class="${person.registered ? 'btn-undo' : 'btn-arrive'}"
+                  onclick="toggleRegister(${person.rowNumber}, ${!person.registered}, this)">
+            ${person.registered ? 'Undo' : 'Arrived'}
+          </button>
+        `;
+        list.appendChild(div);
+      });
+    }
+
+    async function toggleRegister(row, status, buttonEl) {
+      const savingEl = document.getElementById('saving');
+      savingEl.style.display = 'block';
+
+      try {
+        await fetch(`${scriptUrl}?sheet=${encodeURIComponent(sheetName)}&row=${row}&status=${status}`, {
+          method: 'POST',
+        });
+
+        const personDiv = buttonEl.closest('.person');
+        const list = document.getElementById('list');
+
+        // Find and update internal state
+        const person = people.find(p => p.rowNumber === row);
+        if (person) person.registered = status;
+
+        // Update UI
+        if (status) {
+          personDiv.classList.add('checked');
+          buttonEl.textContent = 'Undo';
+          buttonEl.className = 'btn-undo';
+          list.removeChild(personDiv);
+          list.appendChild(personDiv);
+        } else {
+          personDiv.classList.remove('checked');
+          buttonEl.textContent = 'Arrived';
+          buttonEl.className = 'btn-arrive';
+          list.removeChild(personDiv);
+          list.insertBefore(personDiv, list.firstChild);
+        }
+
+        updateCounter();
+
+      } catch (err) {
+        alert("Failed to update.");
+        console.error(err);
+      } finally {
+        savingEl.style.display = 'none';
+      }
+    }
+
+    function toggleTheme() {
+      document.body.classList.toggle('dark');
+    }
+
+    loadData();
+  </script>
+</body>
+</html>
+
