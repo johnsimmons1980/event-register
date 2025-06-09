@@ -193,46 +193,29 @@
       });
     }
 
-    async function toggleRegister(row, status, buttonEl) {
-      const savingEl = document.getElementById('saving');
-      savingEl.style.display = 'block';
+async function toggleRegister(row, status, buttonEl) {
+  const savingEl = document.getElementById('saving');
+  savingEl.style.display = 'block';
 
-      try {
-        await fetch(`${scriptUrl}?sheet=${encodeURIComponent(sheetName)}&row=${row}&status=${status}`, {
-          method: 'POST',
-        });
+  try {
+    await fetch(`${scriptUrl}?sheet=${encodeURIComponent(sheetName)}&row=${row}&status=${status}`, {
+      method: 'POST',
+    });
 
-        const personDiv = buttonEl.closest('.person');
-        const list = document.getElementById('list');
+    // Update internal state
+    const person = people.find(p => p.rowNumber === row);
+    if (person) person.registered = status;
 
-        // Find and update internal state
-        const person = people.find(p => p.rowNumber === row);
-        if (person) person.registered = status;
+    // ✅ Re-render the list
+    displayData();
 
-        // Update UI
-        if (status) {
-          personDiv.classList.add('checked');
-          buttonEl.textContent = 'Undo';
-          buttonEl.className = 'btn-undo';
-          list.removeChild(personDiv);
-          list.appendChild(personDiv);
-        } else {
-          personDiv.classList.remove('checked');
-          buttonEl.textContent = 'Arrived';
-          buttonEl.className = 'btn-arrive';
-          list.removeChild(personDiv);
-          list.insertBefore(personDiv, list.firstChild);
-        }
-
-        updateCounter();
-
-      } catch (err) {
-        alert("Failed to update.");
-        console.error(err);
-      } finally {
-        savingEl.style.display = 'none';
-      }
-    }
+  } catch (err) {
+    alert("Failed to update.");
+    console.error(err);
+  } finally {
+    savingEl.style.display = 'none';
+  }
+}
 
     function toggleTheme() {
       document.body.classList.toggle('dark');
