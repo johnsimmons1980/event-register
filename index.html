@@ -228,6 +228,7 @@
   let currentRegister = "Renegades";
   let sheetName = "Sheet1"; // adjust if needed
   let scriptUrl = REGISTER_SCRIPTS[currentRegister];
+  let refreshInterval;
 
   let people = [];
 
@@ -239,16 +240,27 @@
     document.getElementById("counter").textContent = `✔️ ${checkedIn} arrived • ⛔ ${absentCount} absent • 🔄 ${remaining} remaining`;
   }
 
-  function switchRegister() {
+function switchRegister() {
     currentRegister = document.getElementById("sheetSelect").value;
     scriptUrl = REGISTER_SCRIPTS[currentRegister];
     document.querySelector("h2").textContent = `📋 ${currentRegister} - Bournemouth 2025`;
-    loadData();
+    
+    // Clear existing interval if any
+    if (refreshInterval) {
+      clearInterval(refreshInterval);
+    }
+    
+    loadData(true);
+    // Start new refresh interval
+    refreshInterval = setInterval(() => loadData(false), 5000);
   }
 
-  async function loadData() {
+   async function loadData(isInitialLoad = false) {
     const list = document.getElementById('list');
-    list.innerHTML = 'Loading...';
+    // Only show loading on initial load
+    if (isInitialLoad) {
+      list.innerHTML = 'Loading...';
+    }
 
     try {
       const res = await fetch(`${scriptUrl}?sheet=${encodeURIComponent(sheetName)}`);
@@ -262,7 +274,10 @@
       people = data;
       displayData();
     } catch (err) {
-      list.innerHTML = `<p style="color:red;">Failed to load data</p>`;
+      // Only show error if it's the initial load
+      if (isInitialLoad) {
+        list.innerHTML = `<p style="color:red;">Failed to load data</p>`;
+      }
       console.error(err);
     }
   }
@@ -346,7 +361,8 @@
     }
 
     document.querySelector("h2").textContent = `📋 ${currentRegister} - Bournemouth 2025`;
-    loadData();
+    loadData(true);
+    refreshInterval = setInterval(() => loadData(false), 5000);
   </script>
 </body>
 </html>
