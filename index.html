@@ -4,149 +4,219 @@
   <meta charset="UTF-8" />
   <title>Bournemouth Future Cheer 2025</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="config.js"></script>
   <style>
-    :root {
-      --primary: #007bff;
-      --primary-dark: #0056b3;
-      --danger: #dc3545;
-      --danger-dark: #b52a37;
-      --warning: #ffc107;
-      --warning-dark: #d39e00;
-      --bg: #f0f2f5;
-      --text: #222;
-      --card-bg: #ffffff;
-      --checked-bg: #e0e0e0;
+      :root {
+        --primary: #007bff;
+        --primary-dark: #0056b3;
+        --danger: #dc3545;
+        --danger-dark: #b52a37;
+        --warning: #ffc107;
+        --warning-dark: #d39e00;
+        --bg: #f0f2f5;
+        --text: #222;
+        --card-bg: #ffffff;
+        --checked-bg: #e0e0e0;
+      }
+
+      body.dark {
+        --bg: #181a1b;
+        --text: #eee;
+        --card-bg: #252728;
+        --checked-bg: #444;
+      }
+
+      body {
+        font-family: 'Segoe UI', sans-serif;
+        margin: 0;
+        padding: 1rem;
+        background-color: var(--bg);
+        color: var(--text);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        transition: background-color 0.3s ease, color 0.3s ease;
+      }
+
+      h2 {
+        margin: 0.5rem 0;
+        text-align: center;
+        font-size: 1.8rem;
+      }
+
+      #counter {
+        font-size: 1rem;
+        margin-bottom: 1rem;
+      }
+
+      #saving {
+        text-align: center;
+        margin-bottom: 1rem;
+        font-style: italic;
+        color: #666;
+        display: none;
+      }
+
+      #list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        width: 100%;
+        max-width: 420px;
+      }
+
+      .person {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background-color: var(--card-bg);
+        padding: 0.75rem 1rem;
+        border-radius: 10px;
+        border: 2px solid transparent;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        transition: all 0.3s ease;
+      }
+
+      .person.checked {
+        background-color: var(--checked-bg);
+      }
+
+      .person.absent {
+        border: 2px solid var(--danger);
+      }
+
+      .person.checked span {
+        opacity: 0.6;
+        text-decoration: line-through;
+      }
+
+      .person span {
+        font-size: 1rem;
+        flex: 1;
+        padding-right: 1rem;
+      }
+
+      .person button {
+        padding: 0.4rem 0.6rem;
+        border: none;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+        margin-left: 0.4rem;
+      }
+
+      .btn-arrive {
+        background-color: var(--primary);
+        color: white;
+      }
+
+      .btn-arrive:hover {
+        background-color: var(--primary-dark);
+      }
+
+      .btn-undo {
+        background-color: var(--warning);
+        color: black;
+      }
+      .btn-undo:hover {
+        background-color: var(--warning-dark);
+      }
+
+      .btn-absent {
+        background-color: var(--danger);
+        color: white;
+      }
+      .btn-absent:hover {
+        background-color: var(--danger-dark);
+      }
+
+      #toggle-theme {
+        margin-top: 2rem;
+        font-size: 0.9rem;
+        background: none;
+        border: 1px solid var(--text);
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        color: var(--text);
+        cursor: pointer;
+      }
+
+      #toggle-theme:hover {
+        background-color: var(--card-bg);
+      }
+
+    .register-selector {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        z-index: 1;  /* Ensures dropdown appears above other elements */
     }
 
-    body.dark {
-      --bg: #181a1b;
-      --text: #eee;
-      --card-bg: #252728;
-      --checked-bg: #444;
+    .register-selector label {
+        color: var(--text);
+        font-size: 0.9rem;
     }
 
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      margin: 0;
-      padding: 1rem;
-      background-color: var(--bg);
-      color: var(--text);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      transition: background-color 0.3s ease, color 0.3s ease;
+    .register-selector select {
+        appearance: none;
+        background-color: var(--card-bg);
+        border: 1px solid var(--text);
+        border-radius: 6px;
+        padding: 8px 32px 8px 12px;
+        font-size: 0.9rem;
+        color: var(--text);
+        cursor: pointer;
+        background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23666666%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.4-12.8z%22%2F%3E%3C%2Fsvg%3E");
+        background-repeat: no-repeat;
+        background-position: right 12px top 50%;
+        background-size: 10px auto;
+    }
+
+    .register-selector select:hover {
+        border-color: var(--primary);
+    }
+
+    .register-selector select:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
     }
 
     h2 {
-      margin: 0.5rem 0;
-      text-align: center;
-      font-size: 1.8rem;
+        margin: 3rem 0 0.5rem 0;  /* Add top margin to accommodate dropdown */
+        text-align: center;
+        font-size: 1.8rem;
     }
 
-    #counter {
-      font-size: 1rem;
-      margin-bottom: 1rem;
-    }
+    @media (max-width: 480px) {
+        .register-selector {
+            position: static;  /* Changed from relative to static */
+            width: 100%;
+            max-width: 420px;
+            margin-bottom: 1rem;
+            justify-content: center;  /* Center the dropdown on mobile */
+        }
 
-    #saving {
-      text-align: center;
-      margin-bottom: 1rem;
-      font-style: italic;
-      color: #666;
-      display: none;
+        h2 {
+            margin-top: 0.5rem;  /* Reset margin since dropdown is above */
+        }
     }
-
-    #list {
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-      width: 100%;
-      max-width: 420px;
-    }
-
-    .person {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      background-color: var(--card-bg);
-      padding: 0.75rem 1rem;
-      border-radius: 10px;
-      border: 2px solid transparent;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-      transition: all 0.3s ease;
-    }
-
-    .person.checked {
-      background-color: var(--checked-bg);
-    }
-
-    .person.absent {
-      border: 2px solid var(--danger);
-    }
-
-    .person.checked span {
-      opacity: 0.6;
-      text-decoration: line-through;
-    }
-
-    .person span {
-      font-size: 1rem;
-      flex: 1;
-      padding-right: 1rem;
-    }
-
-    .person button {
-      padding: 0.4rem 0.6rem;
-      border: none;
-      border-radius: 6px;
-      font-size: 0.85rem;
-      cursor: pointer;
-      transition: background-color 0.2s ease;
-      margin-left: 0.4rem;
-    }
-
-    .btn-arrive {
-      background-color: var(--primary);
-      color: white;
-    }
-
-    .btn-arrive:hover {
-      background-color: var(--primary-dark);
-    }
-
-    .btn-undo {
-      background-color: var(--warning);
-      color: black;
-    }
-    .btn-undo:hover {
-      background-color: var(--warning-dark);
-    }
-
-    .btn-absent {
-      background-color: var(--danger);
-      color: white;
-    }
-    .btn-absent:hover {
-      background-color: var(--danger-dark);
-    }
-
-    #toggle-theme {
-      margin-top: 2rem;
-      font-size: 0.9rem;
-      background: none;
-      border: 1px solid var(--text);
-      padding: 0.5rem 1rem;
-      border-radius: 6px;
-      color: var(--text);
-      cursor: pointer;
-    }
-
-    #toggle-theme:hover {
-      background-color: var(--card-bg);
-    }
-  </style>
+    </style>
 </head>
 <body>
+
+  <!-- Register Selector Dropdown -->
+  <div class="register-selector">
+      <label for="sheetSelect">Register:</label>
+      <select id="sheetSelect" onchange="switchRegister()">
+          <option value="Renegades">Renegades</option>
+          <option value="Vengeance">Vengeance</option>
+      </select>
+  </div>
 
   <h2>📋 Bournemouth Future Cheer 2025</h2>
   <div id="counter">Loading...</div>
@@ -155,39 +225,47 @@
   <button id="toggle-theme" onclick="toggleTheme()">🌓 Toggle Dark Mode</button>
 
   <script>
-    const scriptUrl = "https://script.google.com/macros/s/AKfycbzjaPg_XRzTtcl0QOV7Xw98CtZfMYgGslA5NIWETGvBjHYm3wYi3A7rkTrsz2dog5nj9Q/exec";  // replace with your actual URL
-    const sheetName = "Sheet1";
+  let currentRegister = "Renegades";
+  let sheetName = "Sheet1"; // adjust if needed
+  let scriptUrl = REGISTER_SCRIPTS[currentRegister];
 
-    let people = [];
+  let people = [];
 
-    function updateCounter() {
-      const total = people.length;
-      const checkedIn = people.filter(p => p.registered).length;
-      const absentCount = people.filter(p => p.absent).length;
-      const remaining = total - checkedIn - absentCount;
-      document.getElementById("counter").textContent = `✔️ ${checkedIn} arrived • ⛔ ${absentCount} absent • 🔄 ${remaining} remaining`;
-    }
+  function updateCounter() {
+    const total = people.length;
+    const checkedIn = people.filter(p => p.registered).length;
+    const absentCount = people.filter(p => p.absent).length;
+    const remaining = total - checkedIn - absentCount;
+    document.getElementById("counter").textContent = `✔️ ${checkedIn} arrived • ⛔ ${absentCount} absent • 🔄 ${remaining} remaining`;
+  }
 
-    async function loadData() {
-      const list = document.getElementById('list');
-      list.innerHTML = 'Loading...';
+  function switchRegister() {
+    currentRegister = document.getElementById("sheetSelect").value;
+    scriptUrl = REGISTER_SCRIPTS[currentRegister];
+    document.querySelector("h2").textContent = `📋 ${currentRegister} - Bournemouth 2025`;
+    loadData();
+  }
 
-      try {
-        const res = await fetch(`${scriptUrl}?sheet=${encodeURIComponent(sheetName)}`);
-        const data = await res.json();
+  async function loadData() {
+    const list = document.getElementById('list');
+    list.innerHTML = 'Loading...';
 
-        if (data.error) {
-          list.innerHTML = `<p style="color:red;">Error: ${data.error}</p>`;
-          return;
-        }
+    try {
+      const res = await fetch(`${scriptUrl}?sheet=${encodeURIComponent(sheetName)}`);
+      const data = await res.json();
 
-        people = data;
-        displayData();
-      } catch (err) {
-        list.innerHTML = `<p style="color:red;">Failed to load data</p>`;
-        console.error(err);
+      if (data.error) {
+        list.innerHTML = `<p style="color:red;">Error: ${data.error}</p>`;
+        return;
       }
+
+      people = data;
+      displayData();
+    } catch (err) {
+      list.innerHTML = `<p style="color:red;">Failed to load data</p>`;
+      console.error(err);
     }
+  }
 
     function displayData() {
       const list = document.getElementById('list');
@@ -267,6 +345,7 @@
       document.body.classList.toggle('dark');
     }
 
+    document.querySelector("h2").textContent = `📋 ${currentRegister} - Bournemouth 2025`;
     loadData();
   </script>
 </body>
